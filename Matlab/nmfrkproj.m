@@ -19,11 +19,11 @@ function [lbest, rbest, lowesterror] = nmfrkproj(data, k, niter, kiter, reinit)
             col = randsample(datadim(2), 1, true, wsample(approx, 1));
             
             for j = 1:kiter
-                kaczrow = randsample(datadim(1), 1, true, wsample(lfactor, 2);
-                kaczcol = randsample(datadim(2), 1, true, wsample(rfactor, 1);
+                kaczrow = randsample(datadim(1), 1, true, wsample(lfactor, 2));
+                kaczcol = randsample(datadim(2), 1, true, wsample(rfactor, 1));
                 
-                lfactor(row, :) = lfactor(row, :) + (data(row, kaczcol) - lfactor(row, :)*rfactor(:, kaczcol)) / norm(rfactor(:, kaczcol)^2 * rfactor(:, kaczcol));
-                rfactor(:, col) = rfactor(:, col) + (data(kaczrow, col) - lfactor(kaczrow, :)*rfactor(:, col)) / norm(lfactor(kaczrow, :)^2 * lfactor(kaczrow, :));
+                lfactor(row, :) = lfactor(row, :) + ((data(row, kaczcol) - lfactor(row, :)*rfactor(:, kaczcol)) / norm(rfactor(:, kaczcol))^2) * rfactor(:, kaczcol).';
+                rfactor(:, col) = rfactor(:, col) + ((data(kaczrow, col) - lfactor(kaczrow, :)*rfactor(:, col)) / norm(lfactor(kaczrow, :))^2) * lfactor(kaczrow, :).';
                 
                 lfactor(row, :) = softproj(lfactor(row, :), j);
                 rfactor(:, col) = softproj(rfactor(:, col), j);
@@ -36,7 +36,7 @@ function [lbest, rbest, lowesterror] = nmfrkproj(data, k, niter, kiter, reinit)
             lowesterror = seqerror;
             lbest = lfactor;
             rbest = rfactor;
-        elseif (finalerror > seqerror(niter)
+        elseif (finalerror > seqerror(niter))
             finalerror = seqerror(niter);
             lowesterror = seqerror;
             lbest = lfactor;
