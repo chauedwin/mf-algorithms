@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[19]:
+# In[1]:
 
 
 import numpy as np
@@ -9,7 +9,7 @@ import multiprocessing as mp
 import re
 
 
-# In[3]:
+# In[2]:
 
 
 def softprojc(vec, i, c = -1e-5):
@@ -18,7 +18,7 @@ def softproji(vec, i):
     return(np.where(vec < 0, (-1 / np.sqrt(i)), vec))
 
 
-# In[4]:
+# In[3]:
 
 
 # mode 1 samples rows
@@ -27,7 +27,7 @@ def weightsample(data, mode):
     return(prob / sum(prob))
 
 
-# In[5]:
+# In[4]:
 
 
 def als(data, k, niter, reinit = 1):
@@ -71,7 +71,7 @@ def als(data, k, niter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[6]:
+# In[5]:
 
 
 def rk(data, k, niter, kacziter, reinit = 1):
@@ -125,10 +125,10 @@ def rk(data, k, niter, kacziter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[7]:
+# In[6]:
 
 
-def brk(data, k, s, niter, kacziter, reinit = 5):
+def brk(data, k, s, niter, kacziter, reinit = 1):
     # set to negative one so we can guarantee an update for the first init
     finalerror = -1
     
@@ -156,8 +156,8 @@ def brk(data, k, s, niter, kacziter, reinit = 5):
             # inner loop for number of RK iterations
             for j in np.arange(kacziter):
                 # sample indices for entry of data matrix, dont want norms in rk step to be 0
-                kaczrow = np.random.choice(lfactor.shape[0], size = s, replace = False, p = weightsample(lfactor, 1))
-                kaczcol = np.random.choice(rfactor.shape[1], size = s, replace = False, p = weightsample(rfactor, 0))
+                kaczrow = np.random.choice(lfactor.shape[0], size = s, replace = False)
+                kaczcol = np.random.choice(rfactor.shape[1], size = s, replace = False)
                 # compute BRK step
                 lfactor[row, :] = lfactor[row, :] + np.matmul((data[row, kaczcol] - np.matmul(lfactor[row, :], rfactor[:, kaczcol])), np.linalg.pinv(rfactor[:, kaczcol]))
                 rfactor[:, col] = rfactor[:, col] + np.matmul(np.linalg.pinv(lfactor[kaczrow, :]), (data[kaczrow, col] - np.matmul(lfactor[kaczrow, :], rfactor[:, col])))
@@ -178,7 +178,7 @@ def brk(data, k, s, niter, kacziter, reinit = 5):
     return(lbest, rbest, lowesterror)
 
 
-# In[8]:
+# In[7]:
 
 
 def alstest(data, k, niter, reinit = 1):
@@ -187,7 +187,7 @@ def alstest(data, k, niter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[9]:
+# In[8]:
 
 
 def rktest(data, k, niter, kacziter, reinit = 1):
@@ -196,7 +196,7 @@ def rktest(data, k, niter, kacziter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[10]:
+# In[9]:
 
 
 def brktest(data, k, s, niter, kacziter, reinit = 1):
@@ -205,7 +205,7 @@ def brktest(data, k, s, niter, kacziter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[11]:
+# In[10]:
 
 
 def listener(q, textfile):
@@ -220,7 +220,7 @@ def listener(q, textfile):
             f.flush()
 
 
-# In[12]:
+# In[11]:
 
 
 def read(filename): 
@@ -229,7 +229,7 @@ def read(filename):
     return(l)
 
 
-# In[13]:
+# In[12]:
 
 
 def alswrite(data, k, niter, q):
@@ -238,7 +238,7 @@ def alswrite(data, k, niter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[14]:
+# In[13]:
 
 
 def rkwrite(data, k, niter, kacziter, q):
@@ -247,7 +247,7 @@ def rkwrite(data, k, niter, kacziter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[15]:
+# In[14]:
 
 
 def brkwrite(data, k, s, niter, kacziter, q):
@@ -256,7 +256,7 @@ def brkwrite(data, k, s, niter, kacziter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[16]:
+# In[15]:
 
 
 def alsmp(data, k, niter, filename, loop, cores = mp.cpu_count()):
@@ -283,7 +283,7 @@ def alsmp(data, k, niter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[17]:
+# In[16]:
 
 
 def rkmp(data, k, niter, kacziter, filename, loop, cores = mp.cpu_count()): 
@@ -310,7 +310,7 @@ def rkmp(data, k, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[18]:
+# In[17]:
 
 
 def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()): 
@@ -337,7 +337,7 @@ def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[ ]:
+# In[18]:
 
 
 def extracterr(tag, errfiles): 
