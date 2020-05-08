@@ -1,11 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[22]:
 
 
 import numpy as np
 import multiprocessing as mp
+import random
 import re
 
 
@@ -18,7 +19,7 @@ def softproji(vec, i):
     return(np.where(vec < 0, (-1 / np.sqrt(i)), vec))
 
 
-# In[3]:
+# In[14]:
 
 
 # mode 1 samples rows
@@ -71,7 +72,7 @@ def als(data, k, niter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[5]:
+# In[12]:
 
 
 def rk(data, k, niter, kacziter, reinit = 1):
@@ -106,7 +107,7 @@ def rk(data, k, niter, kacziter, reinit = 1):
                 kaczcol = np.random.choice(rfactor.shape[1], p = weightsample(rfactor, 0))
                 
                 # compute RK step
-                lfactor[row, :] = lfactor[row, :] + (data[row, kaczcol] - np.matmul(lfactor[row, :], rfactor[:, kaczcol])) / (np.linalg.norm(rfactor[:, kaczcol])**2) * rfactor[:, kaczcol] 
+                lfactor[row, :] = lfactor[row, :] + (data[row, kaczcol] - np.matmul(lfactor[row, :], rfactor[:, kaczcol])) / (np.linalg.norm(rfactor[:, kaczcol])**2) * rfactor[:, kaczcol].T 
                 rfactor[:, col] = rfactor[:, col] + (data[kaczrow, col] - np.matmul(lfactor[kaczrow, :], rfactor[:, col])) / (np.linalg.norm(lfactor[kaczrow, :])**2) * lfactor[kaczrow, :]
      
             # calculate error after update
@@ -351,4 +352,63 @@ def extracterr(tag, errfiles):
         meanerr.append(np.mean(np.asarray(read(f)[:-1]).astype(float)))
         stderr.append(np.std(np.asarray(read(f)[:-1]).astype(float)))
     return(title, meanerr, stderr)
+
+
+# In[17]:
+
+
+def rkupdate(data, lf, rf, kiter):
+    approx = np.matmul(lf, rf)
+    row = np.random.choice(lf.shape[0], p = weightsample(approx, 1))
+    col = np.random.choice(rf.shape[1], p = weightsample(approx, 0))
+    
+    for j in np.arange(kiter):
+        # sample index for entry of data matrix
+        kaczrow = np.random.choice(lf.shape[0], p = weightsample(lf, 1))
+        kaczcol = np.random.choice(rf.shape[1], p = weightsample(rf, 0))
+
+        # compute RK step
+        lf[row, :] = lf[row, :] + (data[row, kaczcol] - np.matmul(lf[row, :], rf[:, kaczcol])) / (np.linalg.norm(rf[:, kaczcol])**2) * rf[:, kaczcol] 
+        rf[:, col] = rf[:, col] + (data[kaczrow, col] - np.matmul(lf[kaczrow, :], rf[:, col])) / (np.linalg.norm(lf[kaczrow, :])**2) * lf[kaczrow, :]
+    return(lf, rf)
+
+
+# In[9]:
+
+
+def rk2(data, k, niter, kacziter, reinit = 1):
+    # set to negative one so we can guarantee an update for the first init
+    finalerror = -1
+    
+    # need to compare final error to overall best and store the overall best
+    seqerror = np.empty(niter)
+    lowesterror = np.empty(1)
+    
+    # store overall best factor matrices
+    lbest = np.random.rand(data.shape[0], k)
+    rbest = np.random.rand(k, data.shape[1])
+    
+    for l in np.arange(reinit):
+        # randomly initialize the factor matrices
+        lfactor = np.random.rand(data.shape[0], k)
+        rfactor = np.random.rand(k, data.shape[1])
+        
+        # outer loop for number of iterations 
+        for i in np.arange(niter):          
+            lfactor, rfactor = rkupdate(data, lfactor, rfactor, kacziter)
+            
+            # calculate error after update
+            seqerror[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+        # update after first init
+        if (finalerror == -1):
+            lowesterror = seqerror
+            lbest = lfactor
+            rbest = rfactor
+        # if not first, only update if final error is lower than overall best
+        elif (finalerror > seqerror[niter - 1]):
+            finalerror = seqerror[niter - 1]
+            lowesterror = seqerror
+            lbest = lfactor
+            rbest = rfactor
+    return(lbest, rbest, lowesterror)
 
