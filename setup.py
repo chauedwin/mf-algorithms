@@ -32,7 +32,7 @@ dev_requirements = [
     "wheel>=0.33.1",
 ]
 
-requirements = ["numpy", "multiprocessing", "re"]
+requirements = ["numpy"]
 
 extra_requirements = {
     "test": test_requirements,
@@ -59,7 +59,6 @@ setup(
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3 :: Only",
-	"Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
