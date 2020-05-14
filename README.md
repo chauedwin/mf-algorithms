@@ -20,14 +20,30 @@ This is the preferred method to install MF Algorithms, as it will always install
 If you don't have [pip](https://pip.pypa.io) installed, these [installation instructions](http://docs.python-guide.org/en/latest/starting/installation/) can guide
 you through the process.
 
-## Quick Start
+## Usage
+First import `functions` from the package. `scipy.sparse` is useful for creating toy sparse matrices to test the algorithms. 
 ```python
->>> from mf_algorithms import Example
->>> a = Example()
->>> a.get_value()
-10
-
+>>> from mf_algorithms import functions
+>>> import scipy.sparse as sparse
 ```
+
+### Matrix Factorization
+
+```python
+>>> test = scipy.sparse.rand(10, 10, density = 0.5, format = 'coo', dtype = None, random_state = None).todense()
+>>> functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
+```
+We can create a sparse matrix with 50% density using the `scipy.sparse` module. For more information on this, [click here](https://docs.scipy.org/doc/scipy/reference/sparse.html).
+
+Then factorize the data matrix with `functions.mf`. The parameters are as follows:
+* `data` takes a data matrix (matrix)
+* `k` takes the factor dimension (int)
+* `s` takes the number of rows/columns to sample per iterative solving step (int)
+* `niter` takes the number of left and right factor updates (int)
+* `siter` takes the number of iterative steps per left/right factor update (int)
+* `solver` takes the type of iterative solver(ALS, BRK, or BGS) (string)
+* `errseq` returns the entire sequence of relative errors if `True` and only the last relative error if `False` (bool)
+* `reinit` reruns the factorization the specified number of times and returns the initialization with the lowest relative error (int)
 
 ## Citing
 If you use our work in an academic setting, please cite our paper:

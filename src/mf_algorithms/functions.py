@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[82]:
+# In[1]:
 
 
 import numpy as np
@@ -660,7 +660,7 @@ def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
     q.put(error)
 
 
-# In[80]:
+# In[93]:
 
 
 def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
