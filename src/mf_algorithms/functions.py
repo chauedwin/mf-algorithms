@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[5]:
 
 
 import numpy as np
 import multiprocessing as mp
 import random
 import re
+import glob
 import sys
 import scipy.sparse
 
 
-# In[2]:
+# In[3]:
 
 
 def softprojc(vec, i, c = -1e-5):
@@ -21,7 +22,7 @@ def softproji(vec, i):
     return(np.where(vec < 0, (-1 / np.sqrt(i)), vec))
 
 
-# In[3]:
+# In[4]:
 
 
 # mode 1 samples rows
@@ -30,7 +31,7 @@ def weightsample(data, mode):
     return(prob / sum(prob))
 
 
-# In[4]:
+# In[5]:
 
 
 def als(data, k, niter, reinit = 1):
@@ -74,7 +75,7 @@ def als(data, k, niter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[5]:
+# In[6]:
 
 
 def rk(data, k, niter, kacziter, reinit = 1):
@@ -128,7 +129,7 @@ def rk(data, k, niter, kacziter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[6]:
+# In[7]:
 
 
 def brk(data, k, s, niter, kacziter, reinit = 1):
@@ -199,7 +200,7 @@ def brk(data, k, s, niter, kacziter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[7]:
+# In[8]:
 
 
 def gs(data, k, niter, gsiter, reinit = 1):
@@ -257,7 +258,7 @@ def gs(data, k, niter, gsiter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[63]:
+# In[9]:
 
 
 def bgs(data, k, s, niter, gsiter, reinit = 1):
@@ -375,7 +376,7 @@ def listener(q, textfile):
             f.flush()
 
 
-# In[14]:
+# In[12]:
 
 
 def read(filename): 
@@ -492,11 +493,12 @@ def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[21]:
+# In[18]:
 
 
 def extracterr(tag, errfiles): 
-    r = re.compile(".*(" + tag + ").*")
+    #r = re.compile(".*(" + tag + ").*")
+    r = re.compile(tag)
     files = list(filter(r.match, errfiles))
     title = list()
     meanerr = list()
@@ -506,6 +508,15 @@ def extracterr(tag, errfiles):
         meanerr.append(np.mean(np.asarray(read(f)[:-1]).astype(float)))
         stderr.append(np.std(np.asarray(read(f)[:-1]).astype(float)))
     return(title, meanerr, stderr)
+
+
+# In[19]:
+
+
+datapath = 'Errors/itertests/*.txt'
+datafiles = list(glob.glob(datapath))
+title1, err1, std1 = extracterr(".*als.*(subiter1000).*", datafiles)
+#print(len(err1))
 
 
 # In[22]:
@@ -562,7 +573,7 @@ def brkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[70]:
+# In[62]:
 
 
 def bgsupdate(data, lf, rf, s, siter):
@@ -595,12 +606,16 @@ def bgsupdate(data, lf, rf, s, siter):
                     resample = False
 
         # compute BGS step
+        #print(np.matmul((data[row, :] - np.matmul(lf[row, :], rf)), np.matmul(np.linalg.pinv(rf[gsrow, :]), np.eye(k)[:, gscol].T)))
+        #print(np.matmul(np.matmul(np.eye(k)[:, gscol], np.linalg.pinv(lf[:, gscol])), (data[:, col] - np.matmul(lf, rf[:, col]))))
         lf[row, :] = lf[row, :] + np.matmul((data[row, :] - np.matmul(lf[row, :], rf)), np.matmul(np.linalg.pinv(rf[gsrow, :]), np.eye(k)[:, gscol].T))
         rf[:, col] = rf[:, col] + np.matmul(np.matmul(np.eye(k)[:, gscol], np.linalg.pinv(lf[:, gscol])), (data[:, col] - np.matmul(lf, rf[:, col])))
+        #print(np.linalg.norm(np.eye(data.shape[0]) - np.matmul(np.linalg.pinv(np.matmul(lf, rf)), np.matmul(lf, rf))))
+
     return(lf, rf)
 
 
-# In[74]:
+# In[57]:
 
 
 def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
@@ -652,7 +667,7 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         return(lbest, rbest, lowesterror[-1])
 
 
-# In[76]:
+# In[26]:
 
 
 def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
@@ -660,7 +675,7 @@ def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
     q.put(error)
 
 
-# In[93]:
+# In[27]:
 
 
 def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
@@ -685,4 +700,15 @@ def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count(
     q.put('kill')
     pool.close()
     pool.join()
+
+
+# In[1]:
+
+
+def createmat(dim, k, s):
+    np.random.seed(s)
+    factor = np.random.choice(4, size=(dim,k), p=np.array([0.7, 0.1, 0.1, 0.1]))
+    weight = np.random.randint(0, 2, size=(k, dim))
+    data = np.matmul(factor, weight)
+    return(data, factor, weight)
 
