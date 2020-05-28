@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[5]:
+# In[2]:
 
 
 import numpy as np
@@ -376,7 +376,7 @@ def listener(q, textfile):
             f.flush()
 
 
-# In[12]:
+# In[14]:
 
 
 def read(filename): 
@@ -493,10 +493,10 @@ def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[18]:
+# In[50]:
 
 
-def extracterr(tag, errfiles): 
+def extracterr(tag, errfiles, titletag): 
     #r = re.compile(".*(" + tag + ").*")
     r = re.compile(tag)
     files = list(filter(r.match, errfiles))
@@ -504,22 +504,13 @@ def extracterr(tag, errfiles):
     meanerr = list()
     stderr = list()
     for f in reversed(files):
-        title.append("".join(re.findall('[0-9]+k*', f)[0]))
+        title.append("".join(re.findall(titletag + '([0-9]+k*)', f)[0]))
         meanerr.append(np.mean(np.asarray(read(f)[:-1]).astype(float)))
         stderr.append(np.std(np.asarray(read(f)[:-1]).astype(float)))
     return(title, meanerr, stderr)
 
 
-# In[19]:
-
-
-datapath = 'Errors/itertests/*.txt'
-datafiles = list(glob.glob(datapath))
-title1, err1, std1 = extracterr(".*als.*(subiter1000).*", datafiles)
-#print(len(err1))
-
-
-# In[22]:
+# In[23]:
 
 
 def alsupdate(data, lf, rf, s, siter):
@@ -533,7 +524,7 @@ def alsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[23]:
+# In[24]:
 
 
 def brkupdate(data, lf, rf, s, siter):
@@ -573,7 +564,7 @@ def brkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[62]:
+# In[40]:
 
 
 def bgsupdate(data, lf, rf, s, siter):
@@ -582,8 +573,12 @@ def bgsupdate(data, lf, rf, s, siter):
             
     # weighted sampling of row and column from data matrix
     # specifying size returns an array rather than a scalar
-    row = np.random.choice(data.shape[0], size = 1, p = weightsample(approx, 1))
-    col = np.random.choice(data.shape[1], size = 1, p = weightsample(approx, 0))
+    #print(lf)
+    #print(rf)
+    #row = np.random.choice(data.shape[0], size = 1, p = weightsample(approx, 1))
+    #col = np.random.choice(data.shape[1], size = 1, p = weightsample(approx, 0))
+    row = np.random.choice(data.shape[0], size = 1)
+    col = np.random.choice(data.shape[1], size = 1)
 
     # inner loop for number of GS iterations
     for j in np.arange(siter):
@@ -615,7 +610,7 @@ def bgsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[57]:
+# In[26]:
 
 
 def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
@@ -667,7 +662,7 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         return(lbest, rbest, lowesterror[-1])
 
 
-# In[26]:
+# In[27]:
 
 
 def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
@@ -675,7 +670,7 @@ def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
     q.put(error)
 
 
-# In[27]:
+# In[28]:
 
 
 def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
@@ -702,7 +697,7 @@ def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count(
     pool.join()
 
 
-# In[1]:
+# In[29]:
 
 
 def createmat(dim, k, s):
@@ -711,4 +706,34 @@ def createmat(dim, k, s):
     weight = np.random.randint(0, 2, size=(k, dim))
     data = np.matmul(factor, weight)
     return(data, factor, weight)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
