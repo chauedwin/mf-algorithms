@@ -21,23 +21,19 @@ If you don't have [pip](https://pip.pypa.io) installed, these [installation inst
 you through the process.
 
 ## Usage
-First import `functions` from the package. `scipy.sparse` is useful for creating toy sparse matrices to test the algorithms. Scipy may need to be installed as needed.
-```bash 
-$ pip install scipy
-```
+First import `functions` from the package. `scipy.sparse` is also useful for creating toy sparse matrices to test the algorithms, thought we will manually generate factor matrices and multiply them to guarantee its rank.
 
 ```python
 >>> from mf_algorithms import functions
->>> import scipy.sparse as sparse
 ```
 
 ### Matrix Factorization
 
 ```python
->>> test = sparse.rand(10, 10, density = 0.5, format = 'coo', dtype = None, random_state = None).todense()
+>>> test = functions.createmat(dim = 200, k = 4, s = 1)
 >>> functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
 ```
-We can create a sparse matrix with 50% density using the `scipy.sparse` module. For more information on this, [click here](https://docs.scipy.org/doc/scipy/reference/sparse.html).
+We can create a sparse matrix with 50% density using a custom function called `createmat`, which generates a square matrix of dimension `dim` with rank `k` using a seed `s`.
 
 Then factorize the data matrix with `functions.mf`. The parameters are as follows:
 * `data` takes a data matrix (matrix)
