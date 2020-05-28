@@ -21,7 +21,11 @@ If you don't have [pip](https://pip.pypa.io) installed, these [installation inst
 you through the process.
 
 ## Usage
-First import `functions` from the package. `scipy.sparse` is useful for creating toy sparse matrices to test the algorithms. 
+First import `functions` from the package. `scipy.sparse` is useful for creating toy sparse matrices to test the algorithms. Scipy may need to be installed as needed.
+```bash 
+$ pip install scipy
+```
+
 ```python
 >>> from mf_algorithms import functions
 >>> import scipy.sparse as sparse
@@ -30,7 +34,7 @@ First import `functions` from the package. `scipy.sparse` is useful for creating
 ### Matrix Factorization
 
 ```python
->>> test = scipy.sparse.rand(10, 10, density = 0.5, format = 'coo', dtype = None, random_state = None).todense()
+>>> test = sparse.rand(10, 10, density = 0.5, format = 'coo', dtype = None, random_state = None).todense()
 >>> functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
 ```
 We can create a sparse matrix with 50% density using the `scipy.sparse` module. For more information on this, [click here](https://docs.scipy.org/doc/scipy/reference/sparse.html).
