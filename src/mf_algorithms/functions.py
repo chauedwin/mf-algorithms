@@ -10,7 +10,6 @@ import random
 import re
 import glob
 import sys
-import scipy.sparse
 
 
 # In[3]:
