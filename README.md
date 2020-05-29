@@ -30,10 +30,10 @@ First import `functions` from the package. `scipy.sparse` is also useful for cre
 ### Matrix Factorization
 
 ```python
->>> test = functions.createmat(dim = 200, k = 4, s = 1)
+>>> test, factor, weight = functions.createmat(dim = 200, k = 4, s = 1)
 >>> functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
 ```
-We can create a sparse matrix with 50% density using a custom function called `createmat`, which generates a square matrix of dimension `dim` with rank `k` using a seed `s`.
+We can create a sparse matrix with 50% density using a custom function called `createmat`, which generates a square matrix of dimension `dim` with rank `k` using a seed `s`, and returns the square matrix along with the two factor matrices.
 
 Then factorize the data matrix with `functions.mf`. The parameters are as follows:
 * `data` takes a data matrix (matrix)
