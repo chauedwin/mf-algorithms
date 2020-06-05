@@ -155,9 +155,7 @@ def brk(data, k, s, niter, kacziter, reinit = 1):
             # weighted sampling of row and column from data matrix
             row = np.random.choice(data.shape[0], size = 1, p = weightsample(approx, 1))
             col = np.random.choice(data.shape[1], size = 1, p = weightsample(approx, 0))
-            #row = np.random.choice(data.shape[0], p = weightsample(approx, 1))
-            #col = np.random.choice(data.shape[1], p = weightsample(approx, 0))
-            
+           
             # inner loop for number of RK iterations
             for j in np.arange(kacziter):
                 # sample indices until at least one nonzero row or col
@@ -177,9 +175,6 @@ def brk(data, k, s, niter, kacziter, reinit = 1):
                         resample = False
 
                 # compute BRK step
-                #kaczrow = np.random.choice(lfactor.shape[0], size = s, replace = False)
-                #kaczcol = np.random.choice(rfactor.shape[1], size = s, replace = False)
-
                 lfactor[row, :] = lfactor[row, :] + np.matmul((data[row, kaczcol] - np.matmul(lfactor[row, :], rfactor[:, kaczcol])), np.linalg.pinv(rfactor[:, kaczcol]))
                 rfactor[:, col] = rfactor[:, col] + np.matmul(np.linalg.pinv(lfactor[kaczrow, :]), (data[kaczrow, col, None] - np.matmul(lfactor[kaczrow, :], rfactor[:, col])))
 
@@ -563,6 +558,27 @@ def brkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
+# In[ ]:
+
+
+def quickbrkupdate(data, lf, rf, s, siter):    
+    # weighted sampling of row and column from data matrix
+    # specifying size returns an array rather than a scalar
+    row = np.random.choice(data.shape[0], size = 1)
+    col = np.random.choice(data.shape[1], size = 1)
+
+    # inner loop for number of BRK iterations
+    for j in np.arange(siter):
+        # sample index for entry of data matrix
+        kaczrow = np.random.choice(lf.shape[0], size = s)
+        kaczcol = np.random.choice(rf.shape[1], size = s)
+        
+        lf[row, :] = lf[row, :] + np.matmul((data[None, row, kaczcol] - np.matmul(lf[row, :], rf[:, kaczcol])), np.linalg.pinv(rf[:, kaczcol]))
+        rf[:, col] = rf[:, col] + np.matmul(np.linalg.pinv(lf[kaczrow, :]), (data[kaczrow, col, None] - np.matmul(lf[kaczrow, :], rf[:, col])))
+
+    return(lf, rf)
+
+
 # In[40]:
 
 
@@ -609,17 +625,18 @@ def bgsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[26]:
+# In[63]:
 
 
 def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
-    # set to negative one so we can guarantee an update for the first init
-    finalerror = -1
-    rows = np.empty(niter)
+    # set to negative 1 so we can guarantee an update for the first init
+    finalerr = -1
     
     # need to compare final error to overall best and store the overall best
-    seqerror = np.empty(niter)
-    lowesterror = np.empty(1)
+    if (errseq):
+        seqerr = np.empty(niter)
+    else:
+        seqerr = np.empty(1)
     
     # store overall best factor matrices
     lbest = np.random.rand(data.shape[0], k)
@@ -632,6 +649,8 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         f = brkupdate
     if solver == "bgs":
         f = bgsupdate
+    if solver == "quickbrk":
+        f = quickbrkupdate
     
     for l in np.arange(reinit):
         # randomly initialize the factor matrices
@@ -642,23 +661,27 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         for i in np.arange(niter):          
             lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
             
-            # calculate error after update
-            seqerror[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+            # calculate error after update if sequence is requested
+            if (errseq):
+                seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+        # calculate ending error if no sequence needed
+        if (errseq == False):
+            seqerr[0] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+        
         # update after first init
-        if (finalerror == -1):
-            lowesterror = seqerror
+        if (finalerr == -1):
+            finalerr = seqerr
             lbest = lfactor
             rbest = rfactor
         # if not first, only update if final error is lower than overall best
-        elif (finalerror > seqerror[-1]):
-            finalerror = seqerror[-1]
-            lowesterror = seqerror
+        elif (finalerr[-1] > seqerr[-1]):
+            finalerr = seqerr
             lbest = lfactor
             rbest = rfactor
     if (errseq):
-        return(lbest, rbest, lowesterror)
+        return(lbest, rbest, finalerr)
     else:
-        return(lbest, rbest, lowesterror[-1])
+        return(lbest, rbest, finalerr[-1])
 
 
 # In[27]:
@@ -705,12 +728,6 @@ def createmat(dim, k, s):
     weight = np.random.randint(0, 2, size=(k, dim))
     data = np.matmul(factor, weight)
     return(data, factor, weight)
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
