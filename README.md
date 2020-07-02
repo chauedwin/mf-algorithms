@@ -31,7 +31,7 @@ First import `functions` from the package. `scipy.sparse` is also useful for cre
 
 ```python
 >>> test, factor, weight = functions.createmat(dim = 200, k = 4, s = 1)
->>> functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
+>>> A, S, error = functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
 ```
 We can create a sparse matrix with 50% density using a custom function called `createmat`, which generates a square matrix of dimension `dim` with rank `k` using a seed `s`, and returns the square matrix along with the two factor matrices.
 
@@ -44,6 +44,11 @@ Then factorize the data matrix with `functions.mf`. The parameters are as follow
 * `solver` takes the type of iterative solver(ALS, BRK, or BGS) (string)
 * `errseq` returns the entire sequence of relative errors if `True` and only the last relative error if `False` (bool)
 * `reinit` reruns the factorization the specified number of times and returns the initialization with the lowest relative error (int)
+
+It then returns the following:
+* left factor matrix
+* right factor matrix
+* error(`array` if `errseq` was true, `float` otherwise)
 
 ## Citing
 If you use our work in an academic setting, please cite our paper:

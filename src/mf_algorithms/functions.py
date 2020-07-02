@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[2]:
+# In[1]:
 
 
 import numpy as np
@@ -12,7 +12,7 @@ import glob
 import sys
 
 
-# In[3]:
+# In[2]:
 
 
 def softprojc(vec, i, c = -1e-5):
@@ -21,7 +21,7 @@ def softproji(vec, i):
     return(np.where(vec < 0, (-1 / np.sqrt(i)), vec))
 
 
-# In[4]:
+# In[3]:
 
 
 # mode 1 samples rows
@@ -30,7 +30,7 @@ def weightsample(data, mode):
     return(prob / sum(prob))
 
 
-# In[5]:
+# In[4]:
 
 
 def als(data, k, niter, reinit = 1):
@@ -74,7 +74,7 @@ def als(data, k, niter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[6]:
+# In[5]:
 
 
 def rk(data, k, niter, kacziter, reinit = 1):
@@ -128,7 +128,7 @@ def rk(data, k, niter, kacziter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[7]:
+# In[6]:
 
 
 def brk(data, k, s, niter, kacziter, reinit = 1):
@@ -194,7 +194,7 @@ def brk(data, k, s, niter, kacziter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[8]:
+# In[7]:
 
 
 def gs(data, k, niter, gsiter, reinit = 1):
@@ -252,7 +252,7 @@ def gs(data, k, niter, gsiter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[9]:
+# In[8]:
 
 
 def bgs(data, k, s, niter, gsiter, reinit = 1):
@@ -328,7 +328,7 @@ def bgs(data, k, s, niter, gsiter, reinit = 1):
     return(lbest, rbest, lowesterror)
 
 
-# In[10]:
+# In[9]:
 
 
 def alstest(data, k, niter, reinit = 1):
@@ -337,7 +337,7 @@ def alstest(data, k, niter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[11]:
+# In[10]:
 
 
 def rktest(data, k, niter, kacziter, reinit = 1):
@@ -346,7 +346,7 @@ def rktest(data, k, niter, kacziter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[12]:
+# In[11]:
 
 
 def brktest(data, k, s, niter, kacziter, reinit = 1):
@@ -355,7 +355,7 @@ def brktest(data, k, s, niter, kacziter, reinit = 1):
     return((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[13]:
+# In[12]:
 
 
 def listener(q, textfile):
@@ -370,7 +370,7 @@ def listener(q, textfile):
             f.flush()
 
 
-# In[14]:
+# In[13]:
 
 
 def read(filename): 
@@ -379,7 +379,7 @@ def read(filename):
     return(l)
 
 
-# In[15]:
+# In[14]:
 
 
 def alswrite(data, k, niter, q):
@@ -388,7 +388,7 @@ def alswrite(data, k, niter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[16]:
+# In[15]:
 
 
 def rkwrite(data, k, niter, kacziter, q):
@@ -397,7 +397,7 @@ def rkwrite(data, k, niter, kacziter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[17]:
+# In[16]:
 
 
 def brkwrite(data, k, s, niter, kacziter, q):
@@ -406,7 +406,7 @@ def brkwrite(data, k, s, niter, kacziter, q):
     q.put((np.linalg.norm(data - approx) / np.linalg.norm(data)))
 
 
-# In[18]:
+# In[17]:
 
 
 def alsmp(data, k, niter, filename, loop, cores = mp.cpu_count()):
@@ -433,7 +433,7 @@ def alsmp(data, k, niter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[19]:
+# In[18]:
 
 
 def rkmp(data, k, niter, kacziter, filename, loop, cores = mp.cpu_count()): 
@@ -460,7 +460,7 @@ def rkmp(data, k, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[20]:
+# In[19]:
 
 
 def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()): 
@@ -487,7 +487,7 @@ def brkmp(data, k, s, niter, kacziter, filename, loop, cores = mp.cpu_count()):
     pool.join()
 
 
-# In[50]:
+# In[20]:
 
 
 def extracterr(tag, errfiles, titletag): 
@@ -504,7 +504,7 @@ def extracterr(tag, errfiles, titletag):
     return(title, meanerr, stderr)
 
 
-# In[23]:
+# In[21]:
 
 
 def alsupdate(data, lf, rf, s, siter):
@@ -518,7 +518,7 @@ def alsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[24]:
+# In[22]:
 
 
 def brkupdate(data, lf, rf, s, siter):
@@ -558,7 +558,7 @@ def brkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[ ]:
+# In[23]:
 
 
 def quickbrkupdate(data, lf, rf, s, siter):    
@@ -579,7 +579,7 @@ def quickbrkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[40]:
+# In[24]:
 
 
 def bgsupdate(data, lf, rf, s, siter):
@@ -625,7 +625,7 @@ def bgsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[63]:
+# In[55]:
 
 
 def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
@@ -659,15 +659,23 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         
         # outer loop for number of iterations 
         for i in np.arange(niter):          
-            lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
-            
-            # calculate error after update if sequence is requested
-            if (errseq):
-                seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+            # account for inf
+            try:
+                lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
+                # calculate error after update if sequence is requested
+                if (errseq):
+                    seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+            except:
+                if(errseq):
+                    seqerr[i] = math.nan
+                break
+
         # calculate ending error if no sequence needed
         if (errseq == False):
-            seqerr[0] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
-        
+            try:
+                seqerr[0] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+            except:
+                seqerr[0] = math.nan
         # update after first init
         if (finalerr == -1):
             finalerr = seqerr
@@ -684,7 +692,7 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         return(lbest, rbest, finalerr[-1])
 
 
-# In[27]:
+# In[26]:
 
 
 def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
@@ -692,7 +700,7 @@ def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
     q.put(error)
 
 
-# In[28]:
+# In[27]:
 
 
 def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
@@ -719,7 +727,7 @@ def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count(
     pool.join()
 
 
-# In[29]:
+# In[28]:
 
 
 def createmat(dim, k, s):
@@ -728,12 +736,6 @@ def createmat(dim, k, s):
     weight = np.random.randint(0, 2, size=(k, dim))
     data = np.matmul(factor, weight)
     return(data, factor, weight)
-
-
-# In[ ]:
-
-
-
 
 
 # In[ ]:
