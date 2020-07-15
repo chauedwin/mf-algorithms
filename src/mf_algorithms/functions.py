@@ -518,7 +518,7 @@ def alsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[22]:
+# In[78]:
 
 
 def brkupdate(data, lf, rf, s, siter):
@@ -533,9 +533,10 @@ def brkupdate(data, lf, rf, s, siter):
     for j in np.arange(siter):
         if s == 1:
             # sample index for entry of data matrix
-            kaczrow = np.random.choice(lf.shape[0], size = s, p = weightsample(lf, 1))
-            kaczcol = np.random.choice(rf.shape[1], size = s, p = weightsample(rf, 0))
+            kaczrow = np.random.choice(lf.shape[0], size = s, p = weightsample(lf, 1), replace = False)
+            kaczcol = np.random.choice(rf.shape[1], size = s, p = weightsample(rf, 0), replace = False)
         else:
+            # sample st at least one row/column is nonzero
             resample = True
             while(resample):
                 rowsum = 0
@@ -546,7 +547,7 @@ def brkupdate(data, lf, rf, s, siter):
                 for samplerow in kaczrow:
                     rowsum = rowsum + sum(lf[samplerow, :])
                 for samplecol in kaczcol:
-                    colsum = colsum + sum(rf[:, samplerow])
+                    colsum = colsum + sum(rf[:, samplecol])
                 if (rowsum > 0 and colsum > 0):
                     resample = False
 
@@ -558,7 +559,7 @@ def brkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[23]:
+# In[79]:
 
 
 def quickbrkupdate(data, lf, rf, s, siter):    
@@ -570,8 +571,8 @@ def quickbrkupdate(data, lf, rf, s, siter):
     # inner loop for number of BRK iterations
     for j in np.arange(siter):
         # sample index for entry of data matrix
-        kaczrow = np.random.choice(lf.shape[0], size = s)
-        kaczcol = np.random.choice(rf.shape[1], size = s)
+        kaczrow = np.random.choice(lf.shape[0], size = s, replace = False)
+        kaczcol = np.random.choice(rf.shape[1], size = s, replace = False)
         
         lf[row, :] = lf[row, :] + np.matmul((data[None, row, kaczcol] - np.matmul(lf[row, :], rf[:, kaczcol])), np.linalg.pinv(rf[:, kaczcol]))
         rf[:, col] = rf[:, col] + np.matmul(np.linalg.pinv(lf[kaczrow, :]), (data[kaczrow, col, None] - np.matmul(lf[kaczrow, :], rf[:, col])))
@@ -579,7 +580,7 @@ def quickbrkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[24]:
+# In[80]:
 
 
 def bgsupdate(data, lf, rf, s, siter):
@@ -598,8 +599,8 @@ def bgsupdate(data, lf, rf, s, siter):
     # inner loop for number of GS iterations
     for j in np.arange(siter):
         if s == 1:
-            gsrow = np.random.choice(rf.shape[0], size = s, p = weightsample(rf, 1))
-            gscol = np.random.choice(lf.shape[1], size = s, p = weightsample(lf, 0))
+            gsrow = np.random.choice(rf.shape[0], size = s, p = weightsample(rf, 1), replace = False)
+            gscol = np.random.choice(lf.shape[1], size = s, p = weightsample(lf, 0), replace = False)
         else:
             resample = True
             while(resample):
@@ -611,7 +612,7 @@ def bgsupdate(data, lf, rf, s, siter):
                 for samplerow in gsrow:
                     rowsum = rowsum + sum(lf[samplerow, :])
                 for samplecol in gscol:
-                    colsum = colsum + sum(rf[:, samplerow])
+                    colsum = colsum + sum(rf[:, samplecol])
                 if (rowsum > 0 and colsum > 0):
                     resample = False
 
@@ -625,10 +626,29 @@ def bgsupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[55]:
+# In[81]:
 
 
+# kill when error is 10 times larger than initial
 def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
+    
+    # assign solver function based on input
+    if solver == "als":
+        f = alsupdate
+    if solver == "brk":
+        f = brkupdate
+    if solver == "bgs":
+        f = bgsupdate
+    if solver == "quickbrk":
+        f = quickbrkupdate
+    
+    # make sure s is valid
+
+    if solver == "bgs":
+        assert s <= k, "s should be less than k"
+    if solver == "quickbrk" or solver == "brk":
+        assert s <= min(data.shape[0], data.shape[1]), "s should be less than the dimension"
+    
     # set to negative 1 so we can guarantee an update for the first init
     finalerr = -1
     
@@ -642,40 +662,37 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
     lbest = np.random.rand(data.shape[0], k)
     rbest = np.random.rand(k, data.shape[1])
     
-    # for bgs, siter > 1 throws an error 
-    if solver == "als":
-        f = alsupdate
-    if solver == "brk":
-        f = brkupdate
-    if solver == "bgs":
-        f = bgsupdate
-    if solver == "quickbrk":
-        f = quickbrkupdate
-    
     for l in np.arange(reinit):
         # randomly initialize the factor matrices
         lfactor = np.random.rand(data.shape[0], k)
         rfactor = np.random.rand(k, data.shape[1])
         
         # outer loop for number of iterations 
-        for i in np.arange(niter):          
+        for i in np.arange(niter):   
+            '''
             # account for inf
             try:
                 lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
                 # calculate error after update if sequence is requested
                 if (errseq):
                     seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+            
             except:
-                if(errseq):
-                    seqerr[i] = math.nan
+                if (errseq):
+                    seqerr[i] = float("NaN")
                 break
+            '''
+            lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
+            # calculate error after update if sequence is requested
+            if (errseq):
+                seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
 
         # calculate ending error if no sequence needed
         if (errseq == False):
             try:
                 seqerr[0] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
             except:
-                seqerr[0] = math.nan
+                seqerr[0] = float("NaN")
         # update after first init
         if (finalerr == -1):
             finalerr = seqerr
@@ -692,7 +709,7 @@ def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, r
         return(lbest, rbest, finalerr[-1])
 
 
-# In[26]:
+# In[82]:
 
 
 def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
@@ -700,7 +717,7 @@ def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
     q.put(error)
 
 
-# In[27]:
+# In[83]:
 
 
 def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
@@ -727,7 +744,7 @@ def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count(
     pool.join()
 
 
-# In[28]:
+# In[84]:
 
 
 def createmat(dim, k, s):
@@ -736,22 +753,4 @@ def createmat(dim, k, s):
     weight = np.random.randint(0, 2, size=(k, dim))
     data = np.matmul(factor, weight)
     return(data, factor, weight)
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
 
