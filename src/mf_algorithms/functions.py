@@ -102,9 +102,9 @@ def rightqbrk(data, s1, lf, rf, siter, col, eps):
 					break
 		else:
 			rf[:, col] = rf[:, col] + np.linalg.lstsq(lf[kaczrow, :], (data[kaczrow, col, None] - lf[kaczrow, :] @ rf[:, col]), rcond = None)[0]
-		if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
-			#print("right break " + str(i))
-			break
+			if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
+				#print("right break " + str(i))
+				break
 	return(rf)
 
 
@@ -150,16 +150,16 @@ def solver(data, s1, s2, lf, rf, niter, siter, update, errseq, eps):
 	
 	if update == "als":
 		leftupdate = leftals
-		rightupdate = rightals
+		#rightupdate = rightals
 	if update == "brk":
 		leftupdate = leftbrk
-		rightupdate = rightbrk
+		#rightupdate = rightbrk
 	if update == "bgs":
 		leftupdate = leftbgs
-		rightupdate = rightbgs
+		#rightupdate = rightbgs
 	if update == "qbrk":
 		leftupdate = leftqbrk
-		rightupdate = rightqbrk
+		#rightupdate = rightqbrk
         
 	r, c = data.shape
 	prop = r / c
@@ -190,7 +190,8 @@ def solver(data, s1, s2, lf, rf, niter, siter, update, errseq, eps):
 		else:
 			c_ind = np.delete(c_ind, np.argwhere(c_ind==col))
         
-		rf = rightupdate(data, s1, lf, rf, siter, col, eps)
+		#rf = rightupdate(data, s1, lf, rf, siter, col, eps)
+		rf = leftupdate(data.T, s1, rf.T, lf.T, siter, col, eps).T
             
 		if (errseq > 0 and ((n + 1) % errseq == 0 or n == 0)):
 			seqerr.append(np.linalg.norm(data - np.matmul(lf, rf)) / np.linalg.norm(data))
