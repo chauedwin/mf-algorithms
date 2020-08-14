@@ -10,12 +10,19 @@ import glob
 import sys
 
 def weightsample(data, mode):
+	''' computes the row-wise or column-wise probability vector for a matrix,
+	useful for a weighted sample of rows or columns
+	'''
     # mode 1 samples rows
     prob = np.linalg.norm(data, axis=mode)
     return(prob / sum(prob))
 
 
 def leftals(data, s2, lf, rf, siter, row, eps):
+	''' Left ALS update
+	Solves and updates x in the system Ax = b using least squares. 
+	'''
+	
 	# perform linear reg update 
 	for i in np.arange(int(siter)):
 		lf[row, :] = np.linalg.lstsq(rf.T, data[row, :].T, rcond = None)[0].T
@@ -24,6 +31,11 @@ def leftals(data, s2, lf, rf, siter, row, eps):
 
 
 def rightals(data, s1, lf, rf, siter, col, eps):
+	''' Right ALS update
+	Solves and updates x in the system xA = b using least squares.
+	Equivalent to using the left update to update x.T in system A.Tx.T = b.T
+	'''
+	
 	# perform linear reg update 
 	for i in np.arange(siter):
 		rf[:, col] = np.linalg.lstsq(lf, data[:, col], rcond = None)[0]
@@ -32,6 +44,11 @@ def rightals(data, s1, lf, rf, siter, col, eps):
 
 
 def leftbrk(data, s2, lf, rf, siter, row, eps):
+	''' Left BRK update
+	Solves and updates x in the system Ax = b using Block Randomized Kaczmarz.
+	The Kaczmarz columns are selected through WEIGHTED sampling.
+	'''
+	
 	for i in np.arange(siter):
 		if s2 == 1:
 			# sample index for entry of data matrix
@@ -53,6 +70,12 @@ def leftbrk(data, s2, lf, rf, siter, row, eps):
 
 
 def rightbrk(data, s1, lf, rf, siter, col, eps):
+	''' Right BRK update
+	Solves and updates x in the system xA = b using Block Randomized Kaczmarz.
+	The Kaczmarz columns are selected through WEIGHTED sampling.
+	Equivalent to using the left update to update x.T in system A.Tx.T = b.T
+	'''
+	
 	for i in np.arange(siter):
 		if s1 == 1:
 			# sample index for entry of data matrix
@@ -74,6 +97,11 @@ def rightbrk(data, s1, lf, rf, siter, col, eps):
 
 
 def leftqbrk(data, s2, lf, rf, siter, row, eps):
+	''' Left QBRK update
+	Solves and updates x in the system Ax = b using Block Randomized Kaczmarz.
+	The Kaczmarz columns are selected through UNIFORM sampling.
+	'''
+	
 	for i in np.arange(siter):
 		kaczcol = np.random.choice(rf.shape[1], size = s2, replace = False)
 		if s2 == 1:
@@ -92,6 +120,12 @@ def leftqbrk(data, s2, lf, rf, siter, row, eps):
 
 
 def rightqbrk(data, s1, lf, rf, siter, col, eps):
+	''' Right QBRK update
+	Solves and updates x in the system xA = b using Block Randomized Kaczmarz.
+	The Kaczmarz columns are selected through UNIFORM sampling.
+	Equivalent to using the left update to update x.T in system A.Tx.T = b.T
+	'''
+	
 	for i in np.arange(siter):
 		kaczrow = np.random.choice(lf.shape[0], size = s1, replace = False)
 		if s1 == 1:
@@ -109,6 +143,10 @@ def rightqbrk(data, s1, lf, rf, siter, col, eps):
 
 
 def leftbgs(data, s2, lf, rf, siter, row, eps):
+	''' Left BGS update
+	Solves and updates x in the system Ax = b using Block Gauss-Seidel.
+	The Gauss-Seidel rows are selected through WEIGHTED sampling.
+	'''
 	k = lf.shape[1]
 	# inner loop for number of GS iterations
 	for j in np.arange(siter):
@@ -128,6 +166,12 @@ def leftbgs(data, s2, lf, rf, siter, row, eps):
 
 
 def rightbgs(data, s1, lf, rf, siter, col, eps):
+	''' Right QBRK update
+	Solves and updates x in the system xA = b using Block Gauss-Seidel.
+	The Gauss-Seidel columns are selected through WEIGHTED sampling.
+	Equivalent to using the left update to update x.T in system A.Tx.T = b.T
+	'''
+	
 	k = lf.shape[1]
 		# inner loop for number of GS iterations
 	for j in np.arange(siter):
@@ -202,18 +246,56 @@ def solver(data, s1, s2, lf, rf, niter, siter, update, errseq, eps):
 
 def mf(data, k, s1 = 1, s2 = 0, niter = 100, siter = 1, update = 'als', errseq = 0, mult = 0.5, eps = 1e-3, reinit = 1):
     
+	''' Matrix Factorization
+	
+	A randomized iterative matrix factorization algorithm for matrix equations 
+	of the form AS = X.
+	
+	Parameters:
+	-------------
+	data: ndarray
+		The data matrix "X" to be factored
+	k: int
+		The factor dimension chosen 
+	s1: int
+		The block size of left factor matrix "A" used to update "S"
+		Ignored in ALS update
+	s2: int
+		The block size of right factor matrix "S" used to update "A"
+		Ignored in ALS update
+	niter: int
+		The number of alternating iterations 
+	siter: int
+		The number of subiterations
+	update: string from the set {"als", "brk", "qbrk", "bgs"}
+		The type of matrix update. QBRK is the same as UBRK.
+	errseq: int
+		Calculates and returns the relative error of the factorization at multiples of 
+		the errseq value starting at 0
+		Default is 0, returning the final relative error
+	mult: float
+		Number to multiply the starting initializations of factor matrices
+	eps: float
+		Precision of brk/qbrk/bgs updates when siter > 1
+	reinit: int
+		Number of times to factorize the data matrix, factorization with 
+		lowest final relative error will be returned
+	'''
+	
 	if s2 == 0:
 		s2 = s1
 
 	if (data.shape[0] < data.shape[1]):
 		data = data.T
-	'''
+		
     # make sure s is valid
 	if update == "bgs":
-		assert s <= k, "s should be less than k"
+		assert s1 <= k, "s1 should be less than k"
+		assert s2 <= k, "s2 should be less than k"
 	if update == "qbrk" or update == "brk":
-		assert s <= min(data.shape[0], data.shape[1]), "s should be less than the dimension"
-	'''
+		assert s1 <= data.shape[0], "s1 should be less than the number of rows"
+		assert s2 <= data.shape[1], "s2 should be less than the number of columns"
+	
     # set to negative 1 so we can guarantee an update for the first init
 	finalerr = -1
     
