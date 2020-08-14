@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
-
 
 import numpy as np
 import multiprocessing as mp
@@ -11,41 +9,246 @@ import re
 import glob
 import sys
 
-
-# In[2]:
-
-
-# mode 1 samples rows
 def weightsample(data, mode):
+    # mode 1 samples rows
     prob = np.linalg.norm(data, axis=mode)
     return(prob / sum(prob))
 
 
-# In[3]:
+def leftals(data, s2, lf, rf, siter, row, eps):
+	# perform linear reg update 
+	for i in np.arange(int(siter)):
+		lf[row, :] = np.linalg.lstsq(rf.T, data[row, :].T, rcond = None)[0].T
+		#lf[row, :] = np.linalg.solve(np.matmul(rf, rf.T), np.matmul(rf, data[row, :].T)).T
+	return(lf)
 
 
-def listener(q, textfile):
-    '''listens for messages on the q, writes to file. '''
-    with open(textfile, 'w') as f:
-        while 1:
-            m = q.get()
-            if m == 'kill':
-                f.write('killed')
-                break
-            f.write(str(m) + ', ')
-            f.flush()
+def rightals(data, s1, lf, rf, siter, col, eps):
+	# perform linear reg update 
+	for i in np.arange(siter):
+		rf[:, col] = np.linalg.lstsq(lf, data[:, col], rcond = None)[0]
+		#rf[:, col] = np.linalg.solve(np.matmul(lf.T, lf), np.matmul(lf.T, data[:, col]))
+	return(rf)
 
 
-# In[4]:
+def leftbrk(data, s2, lf, rf, siter, row, eps):
+	for i in np.arange(siter):
+		if s2 == 1:
+			# sample index for entry of data matrix
+			kaczcol = np.random.choice(rf.shape[1], size = s2, p = weightsample(rf, 0), replace = False)
+			lf[row, :] = lf[row, :] + (data[row, kaczcol] - lf[row, :] @ rf[:, kaczcol]) / (np.linalg.norm(rf[:, kaczcol])**2) * rf[:, kaczcol].T 
+		else:
+			# sample s.t. at least one row/column is nonzero
+			resample = True
+			while(resample):
+				kaczcol = np.random.choice(rf.shape[1], size = s2, replace = False)
+				if (np.linalg.norm(rf[:, kaczcol]) > 0):
+					resample = False
+
+			# compute BRK step
+			lf[row, :] = lf[row, :] + np.linalg.lstsq(rf[:, kaczcol].T, (data[None, row, kaczcol] - lf[row, :] @ rf[:, kaczcol]).T, rcond = None)[0].T	
+		if np.linalg.norm(lf[row, :] @ rf - data[row, :]) < eps:
+			break
+	return(lf)
+
+
+def rightbrk(data, s1, lf, rf, siter, col, eps):
+	for i in np.arange(siter):
+		if s1 == 1:
+			# sample index for entry of data matrix
+			kaczrow = np.random.choice(lf.shape[0], size = s1, p = weightsample(lf, 1), replace = False)
+			rf[:, col] = rf[:, col] + (data[kaczrow, col] - lf[kaczrow, :] @ rf[:, col]) / (np.linalg.norm(lf[kaczrow, :])**2) * lf[kaczrow, :].T
+		else:
+			# sample s.t. at least one row/column is nonzero
+			resample = True
+			while(resample):
+				kaczrow = np.random.choice(lf.shape[0], size = s1, replace = False)
+				if (np.linalg.norm(lf[kaczrow]) > 0):
+					resample = False
+
+			# compute BRK step
+			rf[:, col] = rf[:, col] + np.linalg.lstsq(lf[kaczrow, :], (data[kaczrow, col, None] - lf[kaczrow, :] @ rf[:, col]), rcond = None)[0]
+		if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
+			break
+	return(rf)
+
+
+def leftqbrk(data, s2, lf, rf, siter, row, eps):
+	for i in np.arange(siter):
+		kaczcol = np.random.choice(rf.shape[1], size = s2, replace = False)
+		if s2 == 1:
+			lf[row, :] = lf[row, :] + (data[row, kaczcol] - lf[row, :] @ rf[:, kaczcol]) / (np.linalg.norm(rf[:, kaczcol])**2) * rf[:, kaczcol].T 
+			if (i % 100 == 0):
+				if np.linalg.norm(lf[row, :] @ rf - data[row, :]) < eps:
+					#print("left break " + str(i))
+					break
+		else:
+			lf[row, :] = lf[row, :] + np.linalg.lstsq(rf[:, kaczcol].T, (data[None, row, kaczcol] - lf[row, :] @ rf[:, kaczcol]).T, rcond = None)[0].T
+			if np.linalg.norm(lf[row, :] @ rf - data[row, :]) < eps:
+				#print("left break " + str(i))
+				break
+			
+	return(lf)
+
+
+def rightqbrk(data, s1, lf, rf, siter, col, eps):
+	for i in np.arange(siter):
+		kaczrow = np.random.choice(lf.shape[0], size = s1, replace = False)
+		if s1 == 1:
+			rf[:, col] = rf[:, col] + (data[kaczrow, col] - lf[kaczrow, :] @ rf[:, col]) / (np.linalg.norm(lf[kaczrow, :])**2) * lf[kaczrow, :].T
+			if (i % 100 == 0):
+				if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
+					#print("right break " + str(i))
+					break
+		else:
+			rf[:, col] = rf[:, col] + np.linalg.lstsq(lf[kaczrow, :], (data[kaczrow, col, None] - lf[kaczrow, :] @ rf[:, col]), rcond = None)[0]
+		if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
+			#print("right break " + str(i))
+			break
+	return(rf)
+
+
+def leftbgs(data, s2, lf, rf, siter, row, eps):
+	k = lf.shape[1]
+	# inner loop for number of GS iterations
+	for j in np.arange(siter):
+		if s2 == 1:
+			gsrow = np.random.choice(rf.shape[0], size = s2, p = weightsample(rf, 1), replace = False)
+		else:
+			resample = True
+			while(resample):
+				gsrow = np.random.choice(rf.shape[0], size = s2, replace = False)           
+				if (np.linalg.norm(rf[gsrow, :] > 0)):
+					resample = False
+			# compute BGS step
+			lf[row, :] = lf[row, :] + np.linalg.lstsq(rf[gsrow, :].T, (data[row, :] - lf[row, :] @ rf).T, rcond = None)[0].T @ np.eye(k)[gsrow, :]
+		if np.linalg.norm(lf[row, :] @ rf - data[row, :]) < eps:
+			break
+	return(lf)
+
+
+def rightbgs(data, s1, lf, rf, siter, col, eps):
+	k = lf.shape[1]
+		# inner loop for number of GS iterations
+	for j in np.arange(siter):
+		if s1 == 1:
+			gscol = np.random.choice(lf.shape[1], size = s1, p = weightsample(lf, 0), replace = False)
+		else:
+			resample = True
+			while(resample):
+				gscol = np.random.choice(lf.shape[1], size = s1, replace = False)
+				if (np.linalg.norm(lf[:, gscol] > 0)):
+					resample = False
+			# compute BGS step
+			rf[:, col] = rf[:, col] + np.eye(k)[:, gscol] @ np.linalg.lstsq(lf[:, gscol], (data[:, col] - lf @ rf[:, col]), rcond = None)[0]
+		if np.linalg.norm(lf @ rf[:, col] - data[:, col]) < eps:
+			break
+	return(rf)
+
+
+def solver(data, s1, s2, lf, rf, niter, siter, update, errseq, eps):
+	
+	if update == "als":
+		leftupdate = leftals
+		rightupdate = rightals
+	if update == "brk":
+		leftupdate = leftbrk
+		rightupdate = rightbrk
+	if update == "bgs":
+		leftupdate = leftbgs
+		rightupdate = rightbgs
+	if update == "qbrk":
+		leftupdate = leftqbrk
+		rightupdate = rightqbrk
+        
+	r, c = data.shape
+	prop = r / c
+	diff = 0
+	seqerr = list()
+
+	r_dim, c_dim = data.shape
+	r_ind = np.arange(r_dim)
+	c_ind = np.arange(c_dim)
+	rows = list()
+	cols = list()
+    
+	for n in np.arange(niter):
+		for p in np.arange(np.floor(prop + diff)):
+			row = np.random.choice(r_ind, size = 1)
+			rows.append(row)
+			if(len(r_ind) == 1):
+				r_ind = np.arange(r_dim)
+			else:
+				r_ind = np.delete(r_ind, np.argwhere(r_ind==row))
+			lf = leftupdate(data, s2, lf, rf, siter, row, eps)
+		diff = prop + diff - np.floor(prop + diff)
+        
+		col = np.random.choice(c_ind, size = 1)
+		cols.append(col)
+		if(len(c_ind) == 1):
+			c_ind = np.arange(c_dim)
+		else:
+			c_ind = np.delete(c_ind, np.argwhere(c_ind==col))
+        
+		rf = rightupdate(data, s1, lf, rf, siter, col, eps)
+            
+		if (errseq > 0 and ((n + 1) % errseq == 0 or n == 0)):
+			seqerr.append(np.linalg.norm(data - np.matmul(lf, rf)) / np.linalg.norm(data))
+		
+	return(lf, rf, seqerr)
+
+
+
+def mf(data, k, s1 = 1, s2 = 0, niter = 100, siter = 1, update = 'als', errseq = 0, mult = 0.5, eps = 1e-3, reinit = 1):
+    
+	if s2 == 0:
+		s2 = s1
+
+	if (data.shape[0] < data.shape[1]):
+		data = data.T
+	'''
+    # make sure s is valid
+	if update == "bgs":
+		assert s <= k, "s should be less than k"
+	if update == "qbrk" or update == "brk":
+		assert s <= min(data.shape[0], data.shape[1]), "s should be less than the dimension"
+	'''
+    # set to negative 1 so we can guarantee an update for the first init
+	finalerr = -1
+    
+	for l in np.arange(reinit):
+		seqerr = list()
+        
+		# randomly initialize the factor matrices
+		lfactor = np.random.rand(data.shape[0], k) * mult
+		rfactor = np.random.rand(k, data.shape[1]) * mult
+		#start_err = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
+		#prev_err = start_err
+
+		# outer loop for number of iterations 
+		lfactor, rfactor, seqerr = solver(data, s1, s2, lfactor, rfactor, niter, siter, update, errseq, eps)
+
+		# calculate ending error if no sequence needed
+		if (errseq == 0):
+			seqerr.append(np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data))
+
+		# update after first init
+		if (finalerr == -1):
+			finalerr = seqerr
+			lbest = lfactor
+			rbest = rfactor
+        # if not first, only update if final error is lower than overall best
+		elif (finalerr[-1] > seqerr[-1]):
+			finalerr = seqerr
+			lbest = lfactor
+			rbest = rfactor
+	return(lbest, rbest, finalerr)
 
 
 def read(filename): 
     with open(filename, 'r') as f:
         l = f.read().split(',')
     return(l)
-
-
-# In[5]:
 
 
 def extracterr(tag, errfiles, titletag): 
@@ -61,31 +264,79 @@ def extracterr(tag, errfiles, titletag):
         stderr.append(np.std(np.asarray(read(f)[:-1]).astype(float)))
     return(title, meanerr, stderr)
 
+	
+def mfwrite(data, k, s1, s2, niter, siter, update, errseq, mult, q):
+    A, S, error = mf(data, k, s1, s2, niter, siter, update, errseq, mult)
+    q.put(error[0])
 
-# In[6]:
 
+def mpmf(data, k, s1, s2, niter, siter, update, mult, filename, loop, cores = mp.cpu_count()):
+    manager = mp.Manager()
+    q = manager.Queue()    
+    pool = mp.Pool(cores)
+
+    #put listener to work first
+    watcher = pool.apply_async(listener, (q, filename))
+
+    #fire off workers
+    jobs = []
+    for i in range(loop):
+        job = pool.apply_async(mfwrite, (data, k, s1, s2, niter, siter, update, 0, mult, q))
+        jobs.append(job)
+
+    # collect results from the workers through the pool result queue
+    for job in jobs: 
+        job.get()
+
+    #now we are done, kill the listener
+    q.put('kill')
+    pool.close()
+    pool.join()
+
+
+def listener(q, textfile):
+	'''listens for messages on the q, writes to file. '''
+	with open(textfile, 'w') as f:
+		while 1:
+			m = q.get()
+			if m == 'kill':
+				f.write('killed')
+				break
+			f.write(str(m) + ', ')
+			f.flush()
+	
 
 def alsupdate(data, lf, rf, s, siter):
+    """
+    Alternating Least Squares Update
+    
+    It computes a least squares solution for each update. Computationally expensive(depending on the matrix shapes) but exact.
+    """
     row = np.random.randint(data.shape[0], size = 1)
     col = np.random.randint(data.shape[1], size = 1)
             
     # perform linear reg update 
     for i in np.arange(siter):
-        rf[:, col] = np.matmul(np.linalg.pinv(lf), data[:, col])
-        lf[row, :] = np.matmul(data[row, :], np.matmul(rf.T, np.linalg.inv(np.matmul(rf, rf.T))))
+        rf[:, col] = np.linalg.solve(np.matmul(lf.T, lf), np.matmul(lf.T, data[:, col]))
+        lf[row, :] = np.linalg.solve(np.matmul(rf, rf.T), np.matmul(rf, data[row, :].T)).T
+        #rf[:, col] = np.linalg.solve(lf, data[:,col])
+        #lf[row, :] = np.linalg.solve(rf.T, data[row, :].T).T
     return(lf, rf)
 
 
-# In[7]:
-
-
 def brkupdate(data, lf, rf, s, siter):
-    approx = np.matmul(lf, rf)
+    """
+    Block Randomized Kaczmarz Update
+    
+    It approximates the least squares solution at each update. It performs a weighted sampling to choose
+    a row/col of the lf/rf matrix to update. If the block size is 1, it performs a normal RK update, otherwise
+    it performs a BRK update. The blocks are sampled such that there is at least one nonzero row/col.
+    """
             
     # weighted sampling of row and column from data matrix
     # specifying size returns an array rather than a scalar
-    row = np.random.choice(data.shape[0], size = 1, p = weightsample(approx, 1))
-    col = np.random.choice(data.shape[1], size = 1, p = weightsample(approx, 0))
+    row = np.random.choice(data.shape[0], size = 1)
+    col = np.random.choice(data.shape[1], size = 1)
 
     # inner loop for number of BRK iterations
     for j in np.arange(siter):
@@ -93,35 +344,34 @@ def brkupdate(data, lf, rf, s, siter):
             # sample index for entry of data matrix
             kaczrow = np.random.choice(lf.shape[0], size = s, p = weightsample(lf, 1), replace = False)
             kaczcol = np.random.choice(rf.shape[1], size = s, p = weightsample(rf, 0), replace = False)
+            
+            lfactor[row, :] = lfactor[row, :] + (data[row, kaczcol] - lfactor[row, :] @ rfactor[:, kaczcol]) / (np.linalg.norm(rfactor[:, kaczcol])**2) * rfactor[:, kaczcol].T 
+            rfactor[:, col] = rfactor[:, col] + (data[kaczrow, col] - lfactor[kaczrow, :] @ rfactor[:, col]) / (np.linalg.norm(lfactor[kaczrow, :])**2) * lfactor[kaczrow, :].T
+     
         else:
-            # sample st at least one row/column is nonzero
+            # sample s.t. at least one row/column is nonzero
             resample = True
             while(resample):
-                rowsum = 0
-                colsum = 0
                 kaczrow = np.random.choice(lf.shape[0], size = s, replace = False)
                 kaczcol = np.random.choice(rf.shape[1], size = s, replace = False)
-
-                for samplerow in kaczrow:
-                    rowsum = rowsum + sum(lf[samplerow, :])
-                for samplecol in kaczcol:
-                    colsum = colsum + sum(rf[:, samplecol])
-                if (rowsum > 0 and colsum > 0):
+                if (np.linalg.norm(lf[kaczrow]) > 0 and np.linalg.norm(rf[:, kaczcol]) > 0):
                     resample = False
-
+                    
             # compute BRK step
-    
-        lf[row, :] = lf[row, :] + np.matmul((data[None, row, kaczcol] - np.matmul(lf[row, :], rf[:, kaczcol])), np.linalg.pinv(rf[:, kaczcol]))
-        rf[:, col] = rf[:, col] + np.matmul(np.linalg.pinv(lf[kaczrow, :]), (data[kaczrow, col, None] - np.matmul(lf[kaczrow, :], rf[:, col])))
+            lf[row, :] = lf[row, :] + (data[None, row, kaczcol] - lf[row, :] @ rf[:, kaczcol]) @ np.linalg.pinv(rf[:, kaczcol])
+            rf[:, col] = rf[:, col] + np.linalg.pinv(lf[kaczrow, :]) @ (data[kaczrow, col, None] - lf[kaczrow, :] @ rf[:, col])
 
     return(lf, rf)
 
 
-# In[8]:
-
-
-def quickbrkupdate(data, lf, rf, s, siter):    
-    # weighted sampling of row and column from data matrix
+def qbrkupdate(data, lf, rf, s, siter):    
+    """
+    "Quick" Block Randomized Kaczmarz Update 
+    
+    It approximates the least squares solution at each update. This differs from normal BRK by uniformly sampling 
+    of rows/cols rather than performing a weighted sampling, trading approximation quality for computational time.
+    """
+    # uniform sampling of row and column from data matrix
     # specifying size returns an array rather than a scalar
     row = np.random.choice(data.shape[0], size = 1)
     col = np.random.choice(data.shape[1], size = 1)
@@ -138,19 +388,8 @@ def quickbrkupdate(data, lf, rf, s, siter):
     return(lf, rf)
 
 
-# In[9]:
-
-
 def bgsupdate(data, lf, rf, s, siter):
     approx = np.matmul(lf, rf)
-    k = lf.shape[1]
-            
-    # weighted sampling of row and column from data matrix
-    # specifying size returns an array rather than a scalar
-    #print(lf)
-    #print(rf)
-    #row = np.random.choice(data.shape[0], size = 1, p = weightsample(approx, 1))
-    #col = np.random.choice(data.shape[1], size = 1, p = weightsample(approx, 0))
     row = np.random.choice(data.shape[0], size = 1)
     col = np.random.choice(data.shape[1], size = 1)
 
@@ -175,140 +414,6 @@ def bgsupdate(data, lf, rf, s, siter):
                     resample = False
 
         # compute BGS step
-        #print(np.matmul((data[row, :] - np.matmul(lf[row, :], rf)), np.matmul(np.linalg.pinv(rf[gsrow, :]), np.eye(k)[:, gscol].T)))
-        #print(np.matmul(np.matmul(np.eye(k)[:, gscol], np.linalg.pinv(lf[:, gscol])), (data[:, col] - np.matmul(lf, rf[:, col]))))
         lf[row, :] = lf[row, :] + np.matmul((data[row, :] - np.matmul(lf[row, :], rf)), np.matmul(np.linalg.pinv(rf[gsrow, :]), np.eye(k)[:, gscol].T))
         rf[:, col] = rf[:, col] + np.matmul(np.matmul(np.eye(k)[:, gscol], np.linalg.pinv(lf[:, gscol])), (data[:, col] - np.matmul(lf, rf[:, col])))
-        #print(np.linalg.norm(np.eye(data.shape[0]) - np.matmul(np.linalg.pinv(np.matmul(lf, rf)), np.matmul(lf, rf))))
-
     return(lf, rf)
-
-
-# In[10]:
-
-
-# kill when error is 10 times larger than initial
-def mf(data, k, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1):
-    
-    # assign solver function based on input
-    if solver == "als":
-        f = alsupdate
-    if solver == "brk":
-        f = brkupdate
-    if solver == "bgs":
-        f = bgsupdate
-    if solver == "quickbrk":
-        f = quickbrkupdate
-    
-    # make sure s is valid
-
-    if solver == "bgs":
-        assert s <= k, "s should be less than k"
-    if solver == "quickbrk" or solver == "brk":
-        assert s <= min(data.shape[0], data.shape[1]), "s should be less than the dimension"
-    
-    # set to negative 1 so we can guarantee an update for the first init
-    finalerr = -1
-    
-    # need to compare final error to overall best and store the overall best
-    if (errseq):
-        seqerr = np.empty(niter)
-    else:
-        seqerr = np.empty(1)
-    
-    # store overall best factor matrices
-    lbest = np.random.rand(data.shape[0], k)
-    rbest = np.random.rand(k, data.shape[1])
-    
-    for l in np.arange(reinit):
-        # randomly initialize the factor matrices
-        lfactor = np.random.rand(data.shape[0], k)
-        rfactor = np.random.rand(k, data.shape[1])
-        
-        # outer loop for number of iterations 
-        for i in np.arange(niter):   
-            '''
-            # account for inf
-            try:
-                lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
-                # calculate error after update if sequence is requested
-                if (errseq):
-                    seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
-            
-            except:
-                if (errseq):
-                    seqerr[i] = float("NaN")
-                break
-            '''
-            lfactor, rfactor = f(data, lfactor, rfactor, s, siter)
-            # calculate error after update if sequence is requested
-            if (errseq):
-                seqerr[i] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
-
-        # calculate ending error if no sequence needed
-        if (errseq == False):
-            try:
-                seqerr[0] = np.linalg.norm(data - np.matmul(lfactor, rfactor)) / np.linalg.norm(data)
-            except:
-                seqerr[0] = float("NaN")
-        # update after first init
-        if (finalerr == -1):
-            finalerr = seqerr
-            lbest = lfactor
-            rbest = rfactor
-        # if not first, only update if final error is lower than overall best
-        elif (finalerr[-1] > seqerr[-1]):
-            finalerr = seqerr
-            lbest = lfactor
-            rbest = rfactor
-    if (errseq):
-        return(lbest, rbest, finalerr)
-    else:
-        return(lbest, rbest, finalerr[-1])
-
-
-# In[11]:
-
-
-def mfwrite(data, k, s, niter, siter, solver, q, errseq = False, reinit = 1):
-    A, S, error = mf(data, k, s, niter, siter, solver, errseq, reinit)
-    q.put(error)
-
-
-# In[12]:
-
-
-def mpmf(data, k, s, niter, siter, solver, filename, loop, cores = mp.cpu_count()):
-    manager = mp.Manager()
-    q = manager.Queue()    
-    pool = mp.Pool(cores)
-
-    #put listener to work first
-    watcher = pool.apply_async(listener, (q, filename))
-
-    #fire off workers
-    jobs = []
-    for i in range(loop):
-        job = pool.apply_async(mfwrite, (data, k, s, niter, siter, solver, q))
-        jobs.append(job)
-
-    # collect results from the workers through the pool result queue
-    for job in jobs: 
-        job.get()
-
-    #now we are done, kill the listener
-    q.put('kill')
-    pool.close()
-    pool.join()
-
-
-# In[13]:
-
-
-def createmat(dim, k, s):
-    np.random.seed(s)
-    factor = np.random.choice(4, size=(dim,k), p=np.array([0.7, 0.1, 0.1, 0.1]))
-    weight = np.random.randint(0, 2, size=(k, dim))
-    data = np.matmul(factor, weight)
-    return(data, factor, weight)
-

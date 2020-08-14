@@ -24,31 +24,21 @@ you through the process.
 First import `functions` from the package. `scipy.sparse` is also useful for creating toy sparse matrices to test the algorithms, thought we will manually generate factor matrices and multiply them to guarantee its rank.
 
 ```python
+>>> import numpy as np
 >>> from mf_algorithms import functions
 ```
 
 ### Matrix Factorization
 
 ```python
->>> test, factor, weight = functions.createmat(dim = 200, k = 4, s = 1)
->>> A, S, error = functions.mf(data = test, k = 2, s = 1, niter = 100, siter = 1, solver = 'als', errseq = False, reinit = 1)
+>>> dim1 = 1000
+>>> dim2 = 1000
+>>> k = 50
+>>> factors = np.random.choice(4, size=(dim1,k), p=np.array([0.97, 0.01, 0.01, 0.01]))
+>>> weights = np.random.choice(2, size=(k, dim2), p=np.array([0.999, 0.001]))
+>>> mat = factors @ weights
+>>> A, S, error = functions.mf(data = mat, k = 50, s1 = 1, s2 = 1, niter = 100, siter = 1, update = 'als', errseq = False)
 ```
-We can create a sparse matrix with 50% density using a custom function called `createmat`, which generates a square matrix of dimension `dim` with rank `k` using a seed `s`, and returns the square matrix along with the two factor matrices.
-
-Then factorize the data matrix with `functions.mf`. The parameters are as follows:
-* `data` takes a data matrix (matrix)
-* `k` takes the factor dimension (int)
-* `s` takes the number of rows/columns to sample per iterative solving step (int)
-* `niter` takes the number of left and right factor updates (int)
-* `siter` takes the number of iterative steps per left/right factor update (int)
-* `solver` takes the type of iterative solver(ALS, BRK, or BGS) (string)
-* `errseq` returns the entire sequence of relative errors if `True` and only the last relative error if `False` (bool)
-* `reinit` reruns the factorization the specified number of times and returns the initialization with the lowest relative error (int)
-
-It then returns the following:
-* left factor matrix
-* right factor matrix
-* error(`array` if `errseq` was true, `float` otherwise)
 
 ## Citing
 If you use our work in an academic setting, please cite our paper:
