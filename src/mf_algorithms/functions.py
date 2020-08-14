@@ -13,9 +13,9 @@ def weightsample(data, mode):
 	''' computes the row-wise or column-wise probability vector for a matrix,
 	useful for a weighted sample of rows or columns
 	'''
-    # mode 1 samples rows
-    prob = np.linalg.norm(data, axis=mode)
-    return(prob / sum(prob))
+	# mode 1 samples rows
+	prob = np.linalg.norm(data, axis=mode)
+	return(prob / sum(prob))
 
 
 def leftals(data, s2, lf, rf, siter, row, eps):
