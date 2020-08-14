@@ -2,7 +2,7 @@
 
 # Do not edit this string manually, always use bumpversion
 # Details in CONTRIBUTING.md
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __author__ = "Edwin Chau"
 __email__ = "edwinchau@ucla.edu"
