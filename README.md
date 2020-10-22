@@ -43,20 +43,9 @@ First import `functions` from the package. `scipy.sparse` is also useful for cre
 ## Citing
 If you use our work in an academic setting, please cite our paper:
 
+Edwin Chau and Jamie Haddock, On Application of Block Kaczmarz Methods in Matrix Factorization, preprint arXiv:2010.10635, submitted, 2020.
 
+## Authors
 
-## Development
-See [CONTRIBUTING.md](CONTRIBUTING.md) for information related to developing the code.
-
-#### Suggested Git Branch Strategy
-1. `master` is for the most up-to-date development, very rarely should you directly commit to this branch. Your day-to-day work should exist on branches separate from `master`. It is recommended to commit to development branches and make pull requests to master.4. It is recommended to use "Squash and Merge" commits when committing PR's. It makes each set of changes to `master`
-atomic and as a side effect naturally encourages small well defined PR's.
-
-
-#### Additional Optional Setup Steps:
-* Create an initial release to test.PyPI and PyPI.
-    * Follow [This PyPA tutorial](https://packaging.python.org/tutorials/packaging-projects/#generating-distribution-archives), starting from the "Generating distribution archives" section.
-
-* Create a blank github repository (without a README or .gitignore) and push the code to it.
-
-* Delete these setup instructions from `README.md` when you are finished with them.
+- Edwin Chau
+- Jamie Haddock
