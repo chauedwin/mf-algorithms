@@ -21,7 +21,7 @@ If you don't have [pip](https://pip.pypa.io) installed, these [installation inst
 you through the process.
 
 ## Usage
-First import `functions` from the package. `scipy.sparse` is also useful for creating toy sparse matrices to test the algorithms, thought we will manually generate factor matrices and multiply them to guarantee its rank.
+First import `functions` from the package. `scipy.sparse` is also useful for creating toy sparse matrices to test the algorithms, though we will manually generate factor matrices and multiply them to guarantee its rank.
 
 ```python
 >>> import numpy as np
