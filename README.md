@@ -25,7 +25,7 @@ First import `functions` from the package. `scipy.sparse` is also useful for cre
 
 ```python
 >>> import numpy as np
->>> from mf_algorithms import functions
+>>> from mf_algorithms import mf
 ```
 
 ### Matrix Factorization
@@ -34,16 +34,17 @@ First import `functions` from the package. `scipy.sparse` is also useful for cre
 >>> dim1 = 1000
 >>> dim2 = 1000
 >>> k = 50
->>> factors = np.random.choice(4, size=(dim1,k), p=np.array([0.97, 0.01, 0.01, 0.01]))
->>> weights = np.random.choice(2, size=(k, dim2), p=np.array([0.999, 0.001]))
->>> mat = factors @ weights
->>> A, S, error = functions.mf(data = mat, k = 50, s1 = 1, s2 = 1, niter = 100, siter = 1, update = 'als', errseq = False)
+>>> A = np.random.choice(4, size=(dim1,k), p=np.array([0.97, 0.01, 0.01, 0.01]))
+>>> S = np.random.choice(2, size=(k, dim2), p=np.array([0.999, 0.001]))
+>>> X = A @ S
+>>> model = MF(X, k, sub = 'ubrk', s1 = 200, s2 = 200)
+>>> model.solve(niter = 1000)
 ```
 
 ## Citing
 If you use our work in an academic setting, please cite our paper:
 
-Edwin Chau and Jamie Haddock, On Application of Block Kaczmarz Methods in Matrix Factorization, preprint arXiv:2010.10635, submitted, 2020.
+Edwin Chau and Jamie Haddock. “On Application of Block Kaczmarz Methods in Matrix Factorization.” Submitted. https://arxiv.org/abs/2010.10635, 2020.
 
 ## Authors
 
